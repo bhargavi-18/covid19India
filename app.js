@@ -98,6 +98,35 @@ app.get('/districts/:districtId/', async (request, response) => {
   response.send(convertDistrictDbObjectToResponseObject(district))
 })
 
+app.put('/districts/:districtId/', async (request, response) => {
+  const {districtName, stateId, cases, cured, active, deaths} = request.body
+  const {stateId} = request.params
+  const updateDistrictQuery = `
+    UPDATA
+      district
+    SET
+      district_name = ${districtName},
+      state_id = ${stateId},
+      cases = ${cases},
+      cured = ${cured},
+      active = ${active},
+      deaths = ${deaths}
+    WHERE 
+      state_id = ${stateId};`
+  await database.run(updateDistrictQuery)      
+  response.send('District Details Updated')
+})
+
+app.delete('/districts/:districtId/', async(request, response) => {
+  const {districtId} = request.params
+  const deleteDistrictQuery = `
+  DELETE FROM
+    district
+  WHERE
+    district_id = ${districtId},`
+  await database.run(deleteDistrictQuery)
+  response.send("District Removed")
+})
 
 app.get("/districts/:districtId/details/",async (request, response) => {
 const { districtId } = request.params;
@@ -121,5 +150,28 @@ const getStateNameQueryResponse =await database.get(getStateNameQuery);
   response.send(getStateNameQueryResponse);
   });
 
+app.get("/states/:stateId/stats/", async(request, response) => {
+  cosnt { stateId } = request.params;
+  const getStateStatusQuery = `
+    SELECT
+      SUM(cases),
+      SUM(cured),
+      SUM(active),
+      SUM(deaths)
+    FROM
+      district
+    WHERE
+      state_id = ${stateId};`;
+  const stats = await database.get(getStateStatusQuery);
 
-module.exports = app;
+  console.log(stats);
+
+  response.send({
+    totalCases: stats["SUM(cases)"],
+    totalCured: stats["SUM(cured)"],
+    totalActive: stats["SUM(active)"],
+    totalDeaths: stats["SUM(deaths)"],
+  });
+});
+
+module.exports = app
